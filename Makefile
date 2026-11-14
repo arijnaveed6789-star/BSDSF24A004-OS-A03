@@ -1,8 +1,8 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Iinclude
 
-SRC = src/main.c src/shell.c src/execute.c src/builtins.c
-OBJ = obj/main.o obj/shell.o obj/execute.o obj/builtins.o
+SRC = src/main.c src/shell.c src/execute.c src/builtins.c src/history.c
+OBJ = obj/main.o obj/shell.o obj/execute.o obj/builtins.o obj/history.o
 TARGET = bin/psh
 
 all: $(TARGET)

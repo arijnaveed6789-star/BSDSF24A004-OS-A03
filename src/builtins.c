@@ -21,6 +21,10 @@ int handle_builtin(char** arglist) {
 
         return 1;
     }
+         else if (strcmp(arglist[0], "history") == 0) {
+        history_print();
+        return 1;
+    }
 
     else if (strcmp(arglist[0], "help") == 0) {
 
