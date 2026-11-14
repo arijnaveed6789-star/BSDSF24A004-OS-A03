@@ -1,0 +1,21 @@
+CC = gcc
+CFLAGS = -Wall -Wextra -Iinclude
+
+SRC = src/main.c src/shell.c src/execute.c
+OBJ = obj/main.o obj/shell.o obj/execute.o
+TARGET = bin/psh
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	mkdir -p bin
+	$(CC) $(OBJ) -o $(TARGET)
+
+obj/%.o: src/%.c include/shell.h
+	mkdir -p obj
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -rf obj/*.o bin/psh
+
+.PHONY: all clean
