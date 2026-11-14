@@ -1,3 +1,4 @@
+LDLIBS = -lreadline
 CC = gcc
 CFLAGS = -Wall -Wextra -Iinclude
 
@@ -9,7 +10,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJ)
 	mkdir -p bin
-	$(CC) $(OBJ) -o $(TARGET)
+	$(CC) $(OBJ) -o $(TARGET) $(LDLIBS)
 
 obj/%.o: src/%.c include/shell.h
 	mkdir -p obj

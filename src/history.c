@@ -40,7 +40,7 @@ void history_print(void) {
     }
 }
 
-int history_expand(char *cmdline, char *expanded, int size) {
+int expand_history_command(char *cmdline, char *expanded, int size) {
     if (cmdline[0] != '!' || cmdline[1] == '\0') {
         return 0;
     }
