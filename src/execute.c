@@ -1,3 +1,5 @@
+
+
 #include "shell.h"
 
 void setup_redirection(char **args) {
@@ -25,7 +27,6 @@ void setup_redirection(char **args) {
             args[i] = NULL;
             i--;
         }
-
         else if (strcmp(args[i], ">") == 0) {
             if (args[i + 1] == NULL) {
                 fprintf(stderr, "Output file missing\n");
@@ -67,19 +68,26 @@ int execute(char *arglist[], int background, const char *command) {
 
         if (pipe_index == 0 || arglist[pipe_index + 1] == NULL) {
             fprintf(stderr, "Invalid pipe command\n");
-            return -1;
+            return 1;
         }
 
         int fd[2];
 
         if (pipe(fd) == -1) {
             perror("pipe");
-            return -1;
+            return 1;
         }
 
         arglist[pipe_index] = NULL;
 
         pid_t pid1 = fork();
+
+        if (pid1 == -1) {
+            perror("fork");
+            close(fd[0]);
+            close(fd[1]);
+            return 1;
+        }
 
         if (pid1 == 0) {
             dup2(fd[1], STDOUT_FILENO);
@@ -93,6 +101,14 @@ int execute(char *arglist[], int background, const char *command) {
         }
 
         pid_t pid2 = fork();
+
+        if (pid2 == -1) {
+            perror("fork");
+            close(fd[0]);
+            close(fd[1]);
+            waitpid(pid1, NULL, 0);
+            return 1;
+        }
 
         if (pid2 == 0) {
             dup2(fd[0], STDIN_FILENO);
@@ -111,22 +127,25 @@ int execute(char *arglist[], int background, const char *command) {
 
         if (background) {
             add_job(pid2, command);
-        } else {
-            waitpid(pid1, NULL, 0);
-            waitpid(pid2, NULL, 0);
+            waitpid(pid1, NULL, WNOHANG);
+            return 0;
         }
 
-        if (background)
-            waitpid(pid1, NULL, WNOHANG);
+        int status1, status2;
+        waitpid(pid1, &status1, 0);
+        waitpid(pid2, &status2, 0);
 
-        return 0;
+        if (WIFEXITED(status2))
+            return WEXITSTATUS(status2);
+
+        return 1;
     }
 
     pid_t cpid = fork();
 
     if (cpid == -1) {
         perror("fork failed");
-        return -1;
+        return 1;
     }
 
     if (cpid == 0) {
@@ -138,9 +157,17 @@ int execute(char *arglist[], int background, const char *command) {
 
     if (background) {
         add_job(cpid, command);
-    } else {
-        waitpid(cpid, NULL, 0);
+        return 0;
     }
 
-    return 0;
+    int status;
+    waitpid(cpid, &status, 0);
+
+    if (WIFEXITED(status))
+        return WEXITSTATUS(status);
+
+    if (WIFSIGNALED(status))
+        return 128 + WTERMSIG(status);
+
+    return 1;
 }
