@@ -38,10 +38,9 @@ int handle_builtin(char** arglist) {
     }
 
     else if (strcmp(arglist[0], "jobs") == 0) {
-
-        printf("Job control not yet implemented.\n");
-        return 1;
-    }
+    print_jobs();
+    return 1;
+}
 
     return 0;
 }

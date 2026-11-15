@@ -21,21 +21,18 @@ static char *command_generator(const char *text, int state) {
     while (commands[index] != NULL) {
         char *command = commands[index++];
 
-        if (strncmp(command, text, length) == 0) {
+        if (strncmp(command, text, length) == 0)
             return strdup(command);
-        }
     }
 
     return NULL;
 }
 
-static char **command_completion(const char *text, int start,
-                                  int end) {
+static char **command_completion(const char *text, int start, int end) {
     (void)end;
 
-    if (start == 0) {
+    if (start == 0)
         return rl_completion_matches(text, command_generator);
-    }
 
     return NULL;
 }
@@ -46,7 +43,13 @@ int main() {
 
     rl_attempted_completion_function = command_completion;
 
-    while ((cmdline = readline(PROMPT)) != NULL) {
+    while (1) {
+        reap_jobs();
+
+        cmdline = readline(PROMPT);
+
+        if (cmdline == NULL)
+            break;
 
         if (cmdline[0] == '\0') {
             free(cmdline);
@@ -68,23 +71,66 @@ int main() {
         history_add(cmdline);
         add_history(cmdline);
 
-        char **args = tokenize(cmdline);
+        char *saveptr;
+        char *segment = strtok_r(cmdline, ";", &saveptr);
 
-        if (args != NULL) {
-            if (!handle_builtin(args)) {
-                execute(args);
+        while (segment != NULL) {
+
+            // Remove leading spaces
+            while (*segment == ' ' || *segment == '\t')
+                segment++;
+
+            // Remove trailing spaces
+            int len = strlen(segment);
+
+            while (len > 0 &&
+                  (segment[len - 1] == ' ' ||
+                   segment[len - 1] == '\t')) {
+                segment[--len] = '\0';
             }
 
-            for (int i = 0; args[i] != NULL; i++) {
-                free(args[i]);
+            if (len == 0) {
+                segment = strtok_r(NULL, ";", &saveptr);
+                continue;
             }
 
-            free(args);
+            // Check background operator &
+            int background = 0;
+
+            if (segment[len - 1] == '&') {
+                background = 1;
+                segment[--len] = '\0';
+
+                while (len > 0 &&
+                      (segment[len - 1] == ' ' ||
+                       segment[len - 1] == '\t')) {
+                    segment[--len] = '\0';
+                }
+            }
+
+            char **args = tokenize(segment);
+
+            if (args != NULL) {
+                if (!handle_builtin(args)) {
+                    execute(args, background, segment);
+                } else if (background) {
+                    printf("Built-in commands cannot run in background.\n");
+                }
+
+                for (int i = 0; args[i] != NULL; i++)
+                    free(args[i]);
+
+                free(args);
+            }
+
+            reap_jobs();
+            segment = strtok_r(NULL, ";", &saveptr);
         }
 
         free(cmdline);
     }
 
+    reap_jobs();
     printf("\nShell exited.\n");
     return 0;
 }

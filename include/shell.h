@@ -16,9 +16,12 @@
 #define PROMPT "FCIT> "
 
 // Function prototypes
+void add_job(pid_t pid, const char *command);
+void reap_jobs(void);
+void print_jobs(void);
 char* read_cmd(char* prompt, FILE* fp);
 char** tokenize(char* cmdline);
-int execute(char** arglist);
+int execute(char** arglist, int background, const char *command);
 int handle_builtin(char** arglist);
 int expand_history_command(char *cmdline, char *expanded, int size);
 void history_add(const char *cmd);

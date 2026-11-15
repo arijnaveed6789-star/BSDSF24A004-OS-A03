@@ -3,7 +3,6 @@
 void setup_redirection(char **args) {
     for (int i = 0; args[i] != NULL; i++) {
 
-        // Input redirection <
         if (strcmp(args[i], "<") == 0) {
             if (args[i + 1] == NULL) {
                 fprintf(stderr, "Input file missing\n");
@@ -20,15 +19,13 @@ void setup_redirection(char **args) {
             dup2(fd, STDIN_FILENO);
             close(fd);
 
-            for (int j = i; args[j + 1] != NULL; j++) {
+            for (int j = i; args[j + 1] != NULL; j++)
                 args[j] = args[j + 2];
-            }
 
             args[i] = NULL;
             i--;
         }
 
-        // Output redirection >
         else if (strcmp(args[i], ">") == 0) {
             if (args[i + 1] == NULL) {
                 fprintf(stderr, "Output file missing\n");
@@ -36,8 +33,7 @@ void setup_redirection(char **args) {
             }
 
             int fd = open(args[i + 1],
-                          O_WRONLY | O_CREAT | O_TRUNC,
-                          0644);
+                          O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
             if (fd < 0) {
                 perror("Output file");
@@ -47,9 +43,8 @@ void setup_redirection(char **args) {
             dup2(fd, STDOUT_FILENO);
             close(fd);
 
-            for (int j = i; args[j + 1] != NULL; j++) {
+            for (int j = i; args[j + 1] != NULL; j++)
                 args[j] = args[j + 2];
-            }
 
             args[i] = NULL;
             i--;
@@ -57,9 +52,8 @@ void setup_redirection(char **args) {
     }
 }
 
-int execute(char *arglist[]) {
+int execute(char *arglist[], int background, const char *command) {
 
-    // Check whether command contains a pipe
     int pipe_index = -1;
 
     for (int i = 0; arglist[i] != NULL; i++) {
@@ -69,7 +63,6 @@ int execute(char *arglist[]) {
         }
     }
 
-    // PIPE IMPLEMENTATION
     if (pipe_index != -1) {
 
         if (pipe_index == 0 || arglist[pipe_index + 1] == NULL) {
@@ -106,10 +99,9 @@ int execute(char *arglist[]) {
             close(fd[0]);
             close(fd[1]);
 
-            setup_redirection(&arglist[pipe_index + 1]);
-            execvp(arglist[pipe_index + 1],
-                   &arglist[pipe_index + 1]);
-
+            char **right = &arglist[pipe_index + 1];
+            setup_redirection(right);
+            execvp(right[0], right);
             perror("Command execution failed");
             exit(1);
         }
@@ -117,13 +109,19 @@ int execute(char *arglist[]) {
         close(fd[0]);
         close(fd[1]);
 
-        waitpid(pid1, NULL, 0);
-        waitpid(pid2, NULL, 0);
+        if (background) {
+            add_job(pid2, command);
+        } else {
+            waitpid(pid1, NULL, 0);
+            waitpid(pid2, NULL, 0);
+        }
+
+        if (background)
+            waitpid(pid1, NULL, WNOHANG);
 
         return 0;
     }
 
-    // NORMAL COMMAND WITH REDIRECTION
     pid_t cpid = fork();
 
     if (cpid == -1) {
@@ -133,12 +131,16 @@ int execute(char *arglist[]) {
 
     if (cpid == 0) {
         setup_redirection(arglist);
-
         execvp(arglist[0], arglist);
         perror("Command not found");
         exit(1);
     }
 
-    waitpid(cpid, NULL, 0);
+    if (background) {
+        add_job(cpid, command);
+    } else {
+        waitpid(cpid, NULL, 0);
+    }
+
     return 0;
 }
