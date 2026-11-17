@@ -1,4 +1,4 @@
-
+#include <ctype.h>
 #include "shell.h"
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -59,7 +59,76 @@ static int is_builtin_command(const char *name) {
            strcmp(name, "exit") == 0 ||
            strcmp(name, "history") == 0 ||
            strcmp(name, "help") == 0 ||
-           strcmp(name, "jobs") == 0;
+           strcmp(name, "set") == 0 || strcmp(name, "jobs") == 0;
+}
+
+static int process_assignment(const char *line) {
+    const char *equal = strchr(line, '=');
+
+    if (equal == NULL || equal == line)
+        return 0;
+
+    int name_len = equal - line;
+
+    if (!(isalpha((unsigned char)line[0]) || line[0] == '_'))
+        return 0;
+
+    for (int i = 1; i < name_len; i++) {
+        if (!isalnum((unsigned char)line[i]) && line[i] != '_')
+            return 0;
+    }
+
+    char *name = malloc(name_len + 1);
+    if (name == NULL)
+        return 1;
+
+    strncpy(name, line, name_len);
+    name[name_len] = '\0';
+
+    const char *value = equal + 1;
+    size_t value_len = strlen(value);
+
+    char *stored_value = malloc(value_len + 1);
+
+    if (stored_value == NULL) {
+        free(name);
+        return 1;
+    }
+
+    strcpy(stored_value, value);
+
+    if (value_len >= 2 &&
+        ((stored_value[0] == '"' &&
+          stored_value[value_len - 1] == '"') ||
+         (stored_value[0] == '\'' &&
+          stored_value[value_len - 1] == '\''))) {
+
+        memmove(stored_value, stored_value + 1, value_len - 2);
+        stored_value[value_len - 2] = '\0';
+    }
+
+    if (!variable_set(name, stored_value))
+        fprintf(stderr, "Unable to store variable.\n");
+
+    free(name);
+    free(stored_value);
+
+    return 1;
+}
+
+static void expand_arguments(char **args) {
+    for (int i = 0; args[i] != NULL; i++) {
+        if (args[i][0] == '$' && args[i][1] != '\0') {
+            const char *value = variable_get(args[i] + 1);
+
+            char *replacement = strdup(value != NULL ? value : "");
+
+            if (replacement != NULL) {
+                free(args[i]);
+                args[i] = replacement;
+            }
+        }
+    }
 }
 
 static int run_command_line(char *line) {
@@ -78,15 +147,21 @@ static int run_command_line(char *line) {
             continue;
         }
 
-        if (segment[len - 1] == '&') {
+                if (segment[len - 1] == '&') {
             background = 1;
             segment[--len] = '\0';
             segment = trim(segment);
         }
 
+        if (process_assignment(segment)) {
+            segment = strtok_r(NULL, ";", &saveptr);
+            continue;
+        }
+
         char **args = tokenize(segment);
 
-        if (args != NULL) {
+        if (args != NULL) 
+        {             expand_arguments(args);
             if (background && is_builtin_command(args[0])) {
                 fprintf(stderr,
                         "Built-in commands cannot run in background.\n");

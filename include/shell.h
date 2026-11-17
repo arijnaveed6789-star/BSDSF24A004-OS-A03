@@ -26,4 +26,7 @@ int handle_builtin(char** arglist);
 int expand_history_command(char *cmdline, char *expanded, int size);
 void history_add(const char *cmd);
 void history_print(void);
+int variable_set(const char *name, const char *value);
+const char *variable_get(const char *name);
+void variables_print(void);
 #endif // SHELL_H

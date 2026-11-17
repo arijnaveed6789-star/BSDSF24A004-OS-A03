@@ -25,6 +25,10 @@ int handle_builtin(char** arglist) {
         history_print();
         return 1;
     }
+     else if (strcmp(arglist[0], "set") == 0) {
+    variables_print();
+    return 1;
+}
 
     else if (strcmp(arglist[0], "help") == 0) {
 
@@ -33,7 +37,7 @@ int handle_builtin(char** arglist) {
         printf("cd - Change directory\n");
         printf("help - Display help information\n");
         printf("jobs - Display background jobs\n");
-
+        printf("set - Display all shell variables\n");
         return 1;
     }
 
