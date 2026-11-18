@@ -36,6 +36,7 @@ int handle_builtin(char** arglist) {
         printf("exit - Exit the shell\n");
         printf("cd - Change directory\n");
         printf("help - Display help information\n");
+        printf("history - Display command history\n");
         printf("jobs - Display background jobs\n");
         printf("set - Display all shell variables\n");
         return 1;
